@@ -18,12 +18,22 @@ async function generatePrediction(input) {
     "Medium Stress": "Sedang",
     "Low Stress": "Rendah"
   };
+  const recommendation =
+    aiResult.recommendation ||
+    aiResult.recommendations ||
+    aiResult.health_recommendation ||
+    "";
+  const recommendations = Array.isArray(recommendation)
+    ? recommendation.filter(Boolean)
+    : recommendation
+      ? [recommendation]
+      : [];
 
   return {
     stressScore: Math.round(aiResult.prediction.stress_score),
     stressLevel: stressLevelMap[aiResult.prediction.stress_level],
     confidence: Number((aiResult.prediction.stress_score / 100).toFixed(2)),
-    recommendations: aiResult.recommendation ? [aiResult.recommendation] : [],
+    recommendations,
     modelProvider: "fastapi-ai",
     modelVersion: env.modelVersion
   };

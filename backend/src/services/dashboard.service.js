@@ -1,5 +1,18 @@
 const { getDatabase } = require("../db/database");
 
+function parseRecommendations(value) {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (error) {
+    return [value];
+  }
+}
+
 async function getDashboardSummary(userId) {
   const db = await getDatabase();
 
@@ -28,6 +41,10 @@ async function getDashboardSummary(userId) {
         stress_level AS stressLevel,
         stress_score AS stressScore,
         confidence,
+        notes,
+        recommendations,
+        model_provider AS modelProvider,
+        model_version AS modelVersion,
         created_at AS createdAt
       FROM predictions
       WHERE user_id = ?
@@ -100,7 +117,12 @@ async function getDashboardSummary(userId) {
   return {
     totalPredictions: totals.totalPredictions,
     averageStressScore: totals.averageStressScore,
-    latestPrediction: latest || null,
+    latestPrediction: latest
+      ? {
+          ...latest,
+          recommendations: parseRecommendations(latest.recommendations)
+        }
+      : null,
     distribution,
     trend: trendRows,
     recentPredictions

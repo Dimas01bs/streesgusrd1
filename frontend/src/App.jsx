@@ -1,4 +1,5 @@
 import { startTransition, useEffect, useState } from "react";
+import { signOut } from "firebase/auth";
 import {
   BookOpen,
   ClipboardList,
@@ -30,6 +31,7 @@ import { SleepForm } from "./components/SleepForm";
 import { LandingPage } from "./components/LandingPage";
 import { AppNavbar } from "./components/AppNavbar";
 import { LoginPage } from "./pages/LoginPage";
+import { auth } from "./firebase";
 const defaultHistoryMeta = {
   page: 1,
   limit: 6,
@@ -147,18 +149,14 @@ function App() {
     bootstrap();
   }, []);
 
-  // Reload data setiap kali currentUser berubah
   useEffect(() => {
-    if (currentUser?.authenticated) {
-      // Reload dashboard dan history saat user berubah
+    if (currentUser && localStorage.getItem("token")) {
+      resetUserScopedData();
       Promise.all([
         loadDashboard(),
         loadHistory("")
       ]);
       setHistoryFilter("");
-    } else {
-      // Reset semua data saat logout
-      resetAllData();
     }
   }, [currentUser?.id]); // Watch ID user, bukan object reference
 
@@ -177,21 +175,22 @@ function App() {
     }
   }
 
-  function resetAllData() {
-    // Reset dashboard
+  function resetUserScopedData() {
     setDashboard(null);
     setDashboardLoading(true);
     setDashboardError("");
     setLatestPrediction(null);
 
-    // Reset history
     setHistoryEntries([]);
     setHistoryMeta(defaultHistoryMeta);
     setHistoryFilter("");
     setHistoryLoading(true);
     setHistoryError("");
+    setHistoryPending(false);
+  }
 
-    // Reset form
+  function resetAllData() {
+    resetUserScopedData();
     setFormValues(createInitialFormValues(formMeta.fields));
     setFormErrors({});
     setSubmitError("");
@@ -234,11 +233,7 @@ function App() {
     try {
       const response = await getDashboardSummary();
       setDashboard(response.data || null);
-      if (response.data?.latestPrediction) {
-        setLatestPrediction(
-          (current) => current || response.data.latestPrediction,
-        );
-      }
+      setLatestPrediction(response.data?.latestPrediction || null);
     } catch (error) {
       // Jika error saat fetch, set dashboard to null tapi jangan show error message
       // karena ini normal untuk akun baru
@@ -362,7 +357,13 @@ function App() {
     }, 100);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Firebase logout error:", error);
+    }
+
     localStorage.removeItem("token");
     setCurrentUser(null);
     setShowApp(false);
@@ -370,6 +371,20 @@ function App() {
     resetAllData();
     window.history.replaceState(null, "", window.location.pathname);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleLoginSuccess(user) {
+    resetAllData();
+    setCurrentUser(user);
+    setShowLogin(false);
+    setShowApp(true);
+
+    setTimeout(() => {
+      document.getElementById("assessment")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   }
 
   function scrollToAssessment() {
@@ -424,18 +439,7 @@ function App() {
   showLogin ? (
     <LoginPage
       onBack={() => setShowLogin(false)}
-      onLoginSuccess={(user) => {
-        setCurrentUser(user);
-        setShowLogin(false);
-        setShowApp(true);
-
-        setTimeout(() => {
-          document.getElementById("assessment")?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        }, 100);
-      }}
+      onLoginSuccess={handleLoginSuccess}
     />
   ) : (
     <LandingPage health={health} onStart={scrollToAssessment} />
