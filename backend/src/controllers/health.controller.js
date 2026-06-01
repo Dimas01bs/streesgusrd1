@@ -2,7 +2,8 @@ const { getDatabase } = require("../db/database");
 
 async function getHealth(req, res) {
   const db = await getDatabase();
-  await db.get("SELECT 1 AS ok");
+
+  await db.query("SELECT 1");
 
   res.json({
     success: true,

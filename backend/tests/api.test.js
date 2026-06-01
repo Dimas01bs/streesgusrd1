@@ -1,20 +1,18 @@
 const request = require("supertest");
-const fs = require("fs");
-const path = require("path");
 const jwt = require("jsonwebtoken");
 
 process.env.NODE_ENV = "test";
-process.env.DB_PATH = "./data/test-stress-detection.sqlite";
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL ||
+  "postgresql://postgres:postgres@localhost:5432/stressguard_test";
 process.env.JWT_SECRET = "test-secret";
-
-const dbFile = path.resolve(process.cwd(), process.env.DB_PATH);
 
 const { app } = require("../src/app");
 const { initializeDatabase, closeDatabase } = require("../src/db/database");
 
 const authToken = jwt.sign(
   {
-    id: "test-user-1",
+    id: 1,
     email: "test@example.com"
   },
   process.env.JWT_SECRET
@@ -37,12 +35,6 @@ function asAuthed(requestBuilder) {
 
 describe("Stress detection API", () => {
   beforeAll(async () => {
-    if (fs.existsSync(dbFile)) {
-      fs.unlinkSync(dbFile);
-    }
-
-    fs.mkdirSync(path.dirname(dbFile), { recursive: true });
-
     global.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -55,15 +47,26 @@ describe("Stress detection API", () => {
       })
     }));
 
-    await initializeDatabase();
+    const db = await initializeDatabase();
+
+    await db.query("TRUNCATE predictions, users RESTART IDENTITY CASCADE");
+    await db.run(
+      `
+        INSERT INTO users (
+          name,
+          email,
+          password_hash
+        )
+        VALUES (?, ?, ?)
+      `,
+      ["Test User", "test@example.com", "test-password-hash"]
+    );
   });
 
   afterAll(async () => {
+    const db = await initializeDatabase();
+    await db.query("TRUNCATE predictions, users RESTART IDENTITY CASCADE");
     await closeDatabase();
-
-    if (fs.existsSync(dbFile)) {
-      fs.unlinkSync(dbFile);
-    }
   });
 
   test("GET /api/v1/health returns healthy status", async () => {

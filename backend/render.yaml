@@ -14,3 +14,5 @@ services:
         value: heuristic
       - key: MODEL_VERSION
         value: heuristic-v1
+      - key: DATABASE_URL
+        sync: false

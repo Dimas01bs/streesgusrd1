@@ -38,7 +38,7 @@ Hasil analisis ditampilkan dalam dashboard, riwayat prediksi, serta rekomendasi 
 ```text
 stressguard/
 ├── frontend/      # React + Vite + Nginx untuk UI aplikasi
-├── backend/       # Express.js API, auth, SQLite, dashboard, history
+├── backend/       # Express.js API, auth, PostgreSQL, dashboard, history
 ├── ai_engineer/   # FastAPI + TensorFlow model + OpenRouter recommendation
 ├── data_science/  # Kumpulan dataset CSV untuk eksplorasi dan training model
 └── image/         # Screenshot dokumentasi aplikasi
@@ -57,7 +57,7 @@ AI Engineer FastAPI
   ↓
 Model TensorFlow + rekomendasi AI
   ↓
-Backend menyimpan hasil ke SQLite
+Backend menyimpan hasil ke PostgreSQL
   ↓
 Frontend menampilkan hasil, dashboard, dan riwayat
 ```
@@ -78,7 +78,7 @@ Backend:
 
 - Node.js
 - Express.js
-- SQLite
+- PostgreSQL
 - Firebase Admin
 - JWT
 - bcrypt
@@ -145,7 +145,7 @@ PORT=5000
 NODE_ENV=development
 API_PREFIX=/api/v1
 FRONTEND_ORIGIN=http://localhost:5173
-DB_PATH=./data/stress-detection.sqlite
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/stressguard
 
 MODEL_PROVIDER=ai
 MODEL_VERSION=tensorflow-gradient-tape-v1
@@ -227,6 +227,25 @@ Buat network:
 
 ```bash
 docker network create stressguard-net
+```
+
+Jalankan PostgreSQL lokal dengan Docker:
+
+```bash
+docker run \
+  --name stressguard-postgres \
+  --network stressguard-net \
+  -e POSTGRES_DB=stressguard \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  postgres:16-alpine
+```
+
+Jika backend juga berjalan di Docker network yang sama, gunakan `DATABASE_URL` seperti ini:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@stressguard-postgres:5432/stressguard
 ```
 
 Jalankan AI service:

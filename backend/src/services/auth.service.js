@@ -43,47 +43,42 @@ function generateToken(user) {
     env.jwtSecret,
     {
       expiresIn: env.jwtExpiresIn,
-    },
+    }
   );
 }
 
 async function registerUser({ name, email, password }) {
   const db = await getDatabase();
 
-  const existingUser = await db.get(`SELECT id FROM users WHERE email = ?`, [
-    email,
-  ]);
+  const existingUserResult = await db.query(
+    `SELECT id FROM users WHERE email = $1`,
+    [email]
+  );
 
-  if (existingUser) {
+  if (existingUserResult.rows[0]) {
     throw new HttpError(409, "Email sudah digunakan.");
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const result = await db.run(
+  const userResult = await db.query(
     `
       INSERT INTO users (
         name,
         email,
         password_hash
       )
-      VALUES (?, ?, ?)
-    `,
-    [name, email, passwordHash],
-  );
-
-  const user = await db.get(
-    `
-      SELECT
+      VALUES ($1, $2, $3)
+      RETURNING
         id,
         name,
         email,
-        created_at AS createdAt
-      FROM users
-      WHERE id = ?
+        created_at AS "createdAt"
     `,
-    [result.lastID],
+    [name, email, passwordHash]
   );
+
+  const user = userResult.rows[0];
 
   return {
     user,
@@ -94,14 +89,16 @@ async function registerUser({ name, email, password }) {
 async function loginUser({ email, password }) {
   const db = await getDatabase();
 
-  const user = await db.get(
+  const userResult = await db.query(
     `
       SELECT *
       FROM users
-      WHERE email = ?
+      WHERE email = $1
     `,
-    [email],
+    [email]
   );
+
+  const user = userResult.rows[0];
 
   if (!user || !user.password_hash) {
     throw new HttpError(401, "Email atau password salah.");
@@ -139,44 +136,40 @@ async function loginWithGoogle(idToken) {
 
   const db = await getDatabase();
 
-  let user = await db.get(
+  let userResult = await db.query(
     `
       SELECT
         id,
         name,
         email,
-        created_at AS createdAt
+        created_at AS "createdAt"
       FROM users
-      WHERE email = ?
+      WHERE email = $1
     `,
-    [email],
+    [email]
   );
 
+  let user = userResult.rows[0];
+
   if (!user) {
-    const result = await db.run(
+    userResult = await db.query(
       `
         INSERT INTO users (
           name,
           email,
           password_hash
         )
-        VALUES (?, ?, ?)
-      `,
-      [name, email, null],
-    );
-
-    user = await db.get(
-      `
-        SELECT
+        VALUES ($1, $2, $3)
+        RETURNING
           id,
           name,
           email,
-          created_at AS createdAt
-        FROM users
-        WHERE id = ?
+          created_at AS "createdAt"
       `,
-      [result.lastID],
+      [name, email, null]
     );
+
+    user = userResult.rows[0];
   }
 
   return {
@@ -188,18 +181,20 @@ async function loginWithGoogle(idToken) {
 async function getCurrentUser(userId) {
   const db = await getDatabase();
 
-  return db.get(
+  const userResult = await db.query(
     `
       SELECT
         id,
         name,
         email,
-        created_at AS createdAt
+        created_at AS "createdAt"
       FROM users
-      WHERE id = ?
+      WHERE id = $1
     `,
-    [userId],
+    [userId]
   );
+
+  return userResult.rows[0];
 }
 
 module.exports = {

@@ -10,7 +10,7 @@ Backend ini dibuat agar sesuai dengan rencana frontend React/Vite pada dokumen `
 ## Stack
 
 - Express.js
-- SQLite
+- PostgreSQL
 - Zod
 - Vitest + Supertest
 
@@ -91,6 +91,24 @@ Ringkasan untuk dashboard frontend:
 - tren 7 hari terakhir,
 - daftar prediksi terbaru.
 
+## Database
+
+Backend menggunakan PostgreSQL melalui environment variable `DATABASE_URL`.
+
+Contoh:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/stressguard
+```
+
+Saat deploy production, gunakan connection string PostgreSQL dari provider seperti Railway, Render, Supabase, Neon, atau layanan PostgreSQL lain.
+
+Jika PostgreSQL berjalan sebagai container dalam Docker network yang sama dengan backend:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@stressguard-postgres:5432/stressguard
+```
+
 ## Catatan Integrasi Model ML
 
 Service saat ini memakai `MODEL_PROVIDER=heuristic` agar aplikasi tetap berjalan walau file model ML belum tersedia di repository. Lapisan inferensi sudah dipisah di `src/services/prediction.service.js`, jadi AI Engineer bisa mengganti implementasi tersebut dengan model `.keras` atau SavedModel tanpa mengubah controller/route.
@@ -112,6 +130,6 @@ Pastikan env production minimal mengatur:
 
 - `PORT`
 - `FRONTEND_ORIGIN`
-- `DB_PATH`
+- `DATABASE_URL`
 - `MODEL_PROVIDER`
 - `MODEL_VERSION`

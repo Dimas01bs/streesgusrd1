@@ -24,6 +24,8 @@ const env = {
   modelVersion: process.env.MODEL_VERSION || "heuristic-v1",
   aiApiUrl: process.env.AI_API_URL || "http://127.0.0.1:8000/predict",
 
+  databaseUrl: process.env.DATABASE_URL,
+
   jwtSecret: process.env.JWT_SECRET || "stressguard-secret-key",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
 
